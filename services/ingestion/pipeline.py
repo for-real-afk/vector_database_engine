@@ -150,6 +150,27 @@ class IngestionPipeline:
             with open(segment_path, "wb") as f:
                 f.write(segment_bytes)
 
+            # If the segment is now full, seal it by building and snapshotting HNSW graph
+            if len(combined_records) >= settings.MAX_VECTORS_PER_SEGMENT:
+                logger.info(f"Segment {segment_id} reached capacity ({len(combined_records)}). Sealing segment and building HNSW index.")
+                from index.graph.hnsw import HNSWIndex
+                from index.serialization.persistence import HNSWIndexManager
+                
+                hnsw_idx = HNSWIndex(
+                    dimension=collection.dimension, 
+                    metric=collection.metric,
+                    M=16,
+                    M0=32,
+                    ef_construction=64
+                )
+                segment_mappings = {}
+                for idx_pos, record in enumerate(combined_records):
+                    hnsw_idx.insert(record['id'], record['vector'])
+                    segment_mappings[record['id']] = (segment_id, idx_pos)
+                
+                snapshot_dir = os.path.join(settings.STORAGE_ROOT, "snapshots", str(segment_id))
+                HNSWIndexManager.snapshot(snapshot_dir, hnsw_idx, segment_mappings)
+
             # 9. Write records to database in a transaction
             for c in db_chunks:
                 self.db.add(c)
@@ -195,18 +216,16 @@ class IngestionPipeline:
         Find an active segment for the collection that has space available,
         or create a new segment ID and return an empty list of records.
         """
-        # We query the database to find an active segment in this collection's chunks
-        # Count embeddings grouped by segment_id
-        active_segment = self.db.query(Embedding.segment_id, func.count(Embedding.id))\
+        # We query the database to find all segments linked to this collection
+        active_segments = self.db.query(Embedding.segment_id, func.count(Embedding.id))\
             .join(Chunk)\
             .join(Document)\
             .filter(Document.collection_id == collection_id)\
             .filter(Embedding.segment_id != None)\
             .group_by(Embedding.segment_id)\
-            .first()
+            .all()
 
-        if active_segment:
-            seg_id, count = active_segment
+        for seg_id, count in active_segments:
             # If segment is not full yet, load existing records
             if count < settings.MAX_VECTORS_PER_SEGMENT:
                 segment_path = os.path.join(settings.STORAGE_ROOT, "segments", f"{seg_id}.bin")
@@ -216,7 +235,7 @@ class IngestionPipeline:
                             data = f.read()
                         # Unpack existing records
                         # Retrieve dimension from collection
-                        col = self.db.query(Collection).join(Document).filter(Document.collection_id == Collection.id).first()
+                        col = self.db.query(Collection).filter(Collection.id == collection_id).first()
                         _, records = BinarySegmentSerializer.deserialize(data, col.dimension)
                         return seg_id, records
                     except Exception as e:
