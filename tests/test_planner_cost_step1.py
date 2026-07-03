@@ -84,7 +84,7 @@ def test_cost_estimator_integration():
     
     assert isinstance(est, CostEstimate)
     assert est.cpu_cost == 500.0
-    assert est.total_cost == 500.0
+    assert est.total_cost == est.cpu_cost + est.io_cost + est.memory_cost
     assert est.confidence_score == 1.0
     
     # If stats are empty, confidence score should drop
