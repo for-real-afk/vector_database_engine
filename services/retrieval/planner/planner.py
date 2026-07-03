@@ -7,6 +7,7 @@ from services.retrieval.planner.strategy_registry import StrategyRegistry
 from services.retrieval.planner.statistics import StatisticsCatalog
 from services.retrieval.planner.cost.cost_estimator import CostEstimator
 from services.retrieval.planner.execution_plan import ExecutionPlan
+from services.retrieval.planner.selectivity_estimator import MetadataSelectivityEstimator
 
 logger = logging.getLogger(__name__)
 
@@ -20,17 +21,19 @@ class QueryPlanner:
         self,
         registry: StrategyRegistry,
         statistics_catalog: StatisticsCatalog,
-        cost_estimator: CostEstimator
+        cost_estimator: CostEstimator,
+        selectivity_estimator: Optional[MetadataSelectivityEstimator] = None
     ):
         self.registry = registry
         self.statistics_catalog = statistics_catalog
         self.cost_estimator = cost_estimator
+        self.selectivity_estimator = selectivity_estimator
 
     def plan(
         self,
         collection_id: uuid.UUID,
         k: int,
-        selectivity: float = 1.0,
+        filters: Optional[dict] = None,
         mode: str = "BALANCED"
     ) -> ExecutionPlan:
         """
@@ -38,6 +41,17 @@ class QueryPlanner:
         """
         trace: List[str] = []
         candidate_plans: Dict[str, Any] = {}
+
+        # 0. Estimate filter selectivity (Feature 7)
+        selectivity = 1.0
+        if self.selectivity_estimator and filters:
+            trace.append(f"Resolving metadata selectivity for filters: {filters}")
+            try:
+                selectivity = self.selectivity_estimator.estimate_selectivity(collection_id, filters)
+                trace.append(f"Selectivity estimate: {selectivity:.2%}")
+            except Exception as e:
+                trace.append(f"Selectivity estimation failed: {e}. Defaulting to 1.0.")
+                logger.error(f"Selectivity estimator failure: {e}")
 
         # 1. Fetch catalog statistics (Feature 3)
         trace.append("Retrieving statistics from StatisticsCatalog.")
