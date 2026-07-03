@@ -26,18 +26,26 @@ class EmbeddingProvider(Protocol):
 class MockEmbeddingProvider:
     """
     Deterministic Mock Embedding Provider for local development and testing.
-    Generates repeatable pseudo-random float vectors based on text content hash.
+    Generates semantic-like vectors by summing word-level hash components.
     """
     def __init__(self, dimension: int = 1536):
         self._dimension = dimension
 
-    def embed_text(self, text: str) -> list[float]:
-        # Generate a deterministic seed from the text hash
-        hasher = hashlib.sha256(text.encode('utf-8'))
+    def _embed_word(self, word: str) -> np.ndarray:
+        clean_word = "".join(c for c in word.lower() if c.isalnum())
+        if not clean_word:
+            return np.zeros(self._dimension)
+        hasher = hashlib.sha256(clean_word.encode('utf-8'))
         seed = int(hasher.hexdigest()[:8], 16)
         rng = np.random.default_rng(seed)
-        vector = rng.standard_normal(self._dimension)
-        # Normalize to unit length (L2 norm = 1) for cosine similarity compatibility
+        return rng.standard_normal(self._dimension)
+
+    def embed_text(self, text: str) -> list[float]:
+        words = text.split()
+        if not words:
+            return np.zeros(self._dimension).tolist()
+            
+        vector = np.sum([self._embed_word(w) for w in words], axis=0)
         norm = np.linalg.norm(vector)
         if norm > 0:
             vector = vector / norm
