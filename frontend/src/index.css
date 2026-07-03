@@ -1,0 +1,273 @@
+/* index.css - Custom styling for Render.com + Terminal aesthetic */
+:root {
+  --bg-primary: #0b0e14;
+  --bg-secondary: #0f121d;
+  --bg-terminal: #07090e;
+  --border-color: #1a2233;
+  --border-glow: #00a38955;
+  --text-primary: #f0f2f5;
+  --text-muted: #707a8a;
+  --accent-teal: #00a389;
+  --accent-cyan: #00f3ff;
+  --accent-green: #39ff14;
+  --accent-red: #ff5252;
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.7);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* App container layout */
+.app-container {
+  display: flex;
+  min-height: 100vh;
+  position: relative;
+}
+
+/* Faded Background Terminal (Left Side) */
+.terminal-bg-sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 30%;
+  background-color: var(--bg-terminal);
+  border-right: 1px solid var(--border-color);
+  padding: 20px;
+  overflow-y: hidden;
+  opacity: 0.12; /* Faded so text is not dominated */
+  pointer-events: none; /* Non-interactive decorative bg */
+  z-index: 1;
+}
+
+.terminal-header {
+  font-size: 11px;
+  color: var(--accent-teal);
+  margin-bottom: 15px;
+  border-bottom: 1px dashed #1a2233;
+  padding-bottom: 5px;
+}
+
+.terminal-line {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  white-space: nowrap;
+}
+
+.terminal-line .cyan {
+  color: var(--accent-cyan);
+}
+
+.terminal-line .green {
+  color: var(--accent-green);
+}
+
+/* Main Dashboard Panel */
+.main-dashboard {
+  flex: 1;
+  margin-left: 30%; /* Offset for background terminal side */
+  padding: 40px;
+  position: relative;
+  z-index: 2; /* Sits above the background terminal */
+  max-width: 1200px;
+}
+
+@media (max-width: 1024px) {
+  .terminal-bg-sidebar {
+    width: 20%;
+  }
+  .main-dashboard {
+    margin-left: 20%;
+    padding: 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  .terminal-bg-sidebar {
+    display: none;
+  }
+  .main-dashboard {
+    margin-left: 0;
+  }
+}
+
+/* Render.com Header Style */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 20px;
+  margin-bottom: 40px;
+}
+
+.brand-section {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logo-badge {
+  background: linear-gradient(135deg, var(--accent-teal), var(--accent-cyan));
+  color: var(--bg-primary);
+  font-weight: 800;
+  padding: 6px 12px;
+  border-radius: 4px;
+}
+
+.logo-text {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.logo-text span {
+  color: var(--accent-teal);
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.dot-pulse {
+  width: 8px;
+  height: 8px;
+  background-color: var(--accent-green);
+  border-radius: 50%;
+  box-shadow: 0 0 8px var(--accent-green);
+}
+
+/* Grid & Dashboard layout */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1-fraction);
+  gap: 24px;
+}
+
+/* Card Panel - Render.com inspired styling */
+.panel-card {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.panel-card:hover {
+  border-color: var(--border-glow);
+  box-shadow: var(--shadow-lg);
+}
+
+.panel-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 10px;
+}
+
+/* Forms & Controls */
+.form-group {
+  margin-bottom: 16px;
+}
+
+.form-label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+.form-input {
+  width: 100%;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 10px 14px;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.form-input:focus {
+  border-color: var(--accent-teal);
+}
+
+.btn {
+  background-color: var(--accent-teal);
+  color: var(--text-primary);
+  border: none;
+  padding: 10px 20px;
+  font-family: inherit;
+  font-weight: 700;
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.btn:hover {
+  background-color: #008f77;
+}
+
+.btn:active {
+  transform: scale(0.98);
+}
+
+/* Visualization elements */
+.graph-container {
+  border: 1px dashed var(--border-color);
+  border-radius: 6px;
+  height: 250px;
+  background-color: var(--bg-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  position: relative;
+  overflow: hidden;
+}
+
+.grid-cols-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.flex-column {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}

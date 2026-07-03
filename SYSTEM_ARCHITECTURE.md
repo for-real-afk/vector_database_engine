@@ -6,10 +6,16 @@ This document details the architectural design, storage layouts, transaction pip
 
 ## 1. System Topology & Layered Architecture
 
-The system is designed with a strict separation of concerns, dividing execution into a **Control Plane** (handled via PostgreSQL for relational guarantees) and a **Data Plane** (handled via custom binary segments and memory-mapped HNSW graphs for extreme retrieval performance).
+The system is designed with a strict separation of concerns. The new Web Frontend allows administrators and developers to visualize the data structures, execute queries, and observe system diagnostics in real-time.
 
 ```
-          +-------------------------------------------------+
+                    +--------------------------------+
+                    |         Frontend Layer         |
+                    |    (Vite / React Admin UI)     |
+                    +---------------+----------------+
+                                    |
+                                    v (HTTP REST / JSON)
+          +-------------------------+-----------------------+
           |                    API Layer                    |
           |       FastAPI / REST API / Authentication       |
           +-----------------------+-------------------------+
@@ -392,3 +398,43 @@ To ensure easy cloud migration, local service boundaries directly map to AWS ser
 | **HNSW Cache / WAL** | Local Disk / Memory | Amazon ElastiCache Redis / S3 | WAL logs copy to Amazon S3 for durability. Cached indexes stored on local NVMe instances. |
 | **Background Workers** | In-Process Task Queue / Celery | Amazon ECS / AWS Batch + SQS | Package workers as ECS Tasks listening to SQS Queues. |
 | **API Load Balancing** | Nginx | AWS Application Load Balancer (ALB) | Route API Gateway or ALB directly to ECS Fargate tasks. |
+
+---
+
+## 11. Frontend Dashboard Architecture
+
+The administration dashboard is built as an independent Single Page Application (SPA). Its architecture is designed to look like a high-performance cloud platform console (Render.com) fused with a terminal aesthetic.
+
+### 11.1 Key UI Views & Components
+1.  **Terminal Console Background (`TerminalBackground.jsx`)**:
+    *   Faded into the side (left/right) of the viewport with a low opacity (`opacity: 0.12`).
+    *   Simulates scrolling system logs (e.g. `WAL flush completed`, `Segment #04 Sealed`, `HNSW Node index loaded: ef_search=50`) to reinforce that the app is a database engine.
+2.  **Collection / Namespace Inspector**:
+    *   Render-style minimal table listing active namespaces and collection bounds.
+    *   Displays schema details, configured chunking strategies (recursive, semantic), and dimension configurations.
+3.  **Real-Time HNSW Graph Visualizer (`GraphVisualizer.jsx`)**:
+    *   Leverages a lightweight 2D canvas/SVG graph or node layout showing HNSW layers.
+    *   Highlights the path taken by query traversals from the entry point down to candidate nodes.
+4.  **Query Sandbox**:
+    *   Allows inputting query text/vectors, selecting distance metrics, and tweaking parameters (like `ef_search`, `K`).
+    *   Shows reciprocal rank fusion (RRF) scoring outputs.
+5.  **Metrics Pane**:
+    *   Plots cache hit rates, insertion latency, and recall benchmarks using clean, minimalist graphs.
+
+### 11.2 Style Sheet Design System (`index.css` / Monospace Font)
+- **Theme**: Monochromatic Slate with Glowing Cyan accents.
+- **Font**: `JetBrains Mono`, `Fira Code`, or `monospace` with `font-variant-ligatures: normal`.
+- **CSS Variables**:
+  ```css
+  :root {
+    --bg-primary: #0b0e14;
+    --bg-secondary: #0f111a;
+    --border-color: #1f2430;
+    --text-primary: #f0f2f5;
+    --text-muted: #707a8a;
+    --accent-teal: #00a389;
+    --accent-cyan: #00f3ff;
+    --accent-red: #ff5252;
+  }
+  ```
+
