@@ -1,4 +1,5 @@
 import uuid
+import json
 from datetime import datetime
 from sqlalchemy import (
     Column, 
@@ -12,9 +13,72 @@ from sqlalchemy import (
     ForeignKeyConstraint,
     Float
 )
+from sqlalchemy.types import TypeDecorator, TEXT
 from sqlalchemy.dialects.postgresql import UUID, ARRAY, JSONB
 from sqlalchemy.orm import relationship
 from core.database import Base
+
+class FloatArrayType(TypeDecorator):
+    """
+    Custom type that maps to PostgreSQL ARRAY(Float) in production,
+    and falls back to JSON-serialized TEXT on SQLite during unit tests.
+    """
+    impl = TEXT
+    cache_ok = True
+
+    def load_dialect_impl(self, dialect):
+        if dialect.name == 'postgresql':
+            return dialect.type_descriptor(ARRAY(Float))
+        else:
+            return dialect.type_descriptor(TEXT)
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return None
+        if dialect.name == 'postgresql':
+            return value
+        return json.dumps(value)
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return None
+        if dialect.name == 'postgresql':
+            return value
+        if isinstance(value, str):
+            return json.loads(value)
+        return value
+
+
+class JSONBType(TypeDecorator):
+    """
+    Custom type that maps to PostgreSQL JSONB in production,
+    and falls back to JSON-serialized TEXT on SQLite during unit tests.
+    """
+    impl = TEXT
+    cache_ok = True
+
+    def load_dialect_impl(self, dialect):
+        if dialect.name == 'postgresql':
+            return dialect.type_descriptor(JSONB)
+        else:
+            return dialect.type_descriptor(TEXT)
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return None
+        if dialect.name == 'postgresql':
+            return value
+        return json.dumps(value)
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return None
+        if dialect.name == 'postgresql':
+            return value
+        if isinstance(value, str):
+            return json.loads(value)
+        return value
+
 
 class User(Base):
     __tablename__ = "users"
@@ -92,7 +156,7 @@ class Embedding(Base):
     chunk_id = Column(UUID(as_uuid=True), ForeignKey("chunks.id", ondelete="CASCADE"), nullable=False)
     segment_id = Column(UUID(as_uuid=True), nullable=True, index=True) # References growing/sealed segment filename ID
     vector_idx = Column(Integer, nullable=True) # Byte offset or sequence idx in segment vector block
-    vector_data = Column(ARRAY(Float), nullable=False) # Source of truth floats
+    vector_data = Column(FloatArrayType, nullable=False) # Source of truth floats (PostgreSQL array, SQLite text)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     # Relationships
@@ -106,7 +170,7 @@ class Metadata(Base):
     document_id = Column(UUID(as_uuid=True), ForeignKey("documents.id", ondelete="CASCADE"), nullable=True)
     chunk_id = Column(UUID(as_uuid=True), ForeignKey("chunks.id", ondelete="CASCADE"), nullable=True)
     key = Column(String(100), nullable=False, index=True)
-    value = Column(JSONB, nullable=False) # Stores scalar or structured nested properties
+    value = Column(JSONBType, nullable=False) # Stores scalar or structured nested properties
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     # Relationships
@@ -121,7 +185,7 @@ class AuditLog(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     action = Column(String(100), nullable=False) # INGEST, SEARCH, DELETE, LOGIN, UPDATE
     target_id = Column(UUID(as_uuid=True), nullable=True) # UUID of collection/document/etc.
-    details = Column(JSONB, nullable=True) # Additional contextual attributes
+    details = Column(JSONBType, nullable=True) # Additional contextual attributes
     ip_address = Column(String(45), nullable=True)
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 

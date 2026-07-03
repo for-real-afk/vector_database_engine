@@ -1,6 +1,16 @@
 import pytest
 from sqlalchemy import inspect
-from models.database_models import User, Collection, Document, Chunk, Embedding, Metadata, AuditLog
+from models.database_models import (
+    User, 
+    Collection, 
+    Document, 
+    Chunk, 
+    Embedding, 
+    Metadata, 
+    AuditLog,
+    FloatArrayType,
+    JSONBType
+)
 
 def test_user_model_schema():
     """Verify columns and constraints on the User model."""
@@ -80,9 +90,8 @@ def test_embedding_model_schema():
     assert "vector_idx" in columns
     assert "vector_data" in columns
     
-    # Verify vector_data is an ARRAY
-    from sqlalchemy.dialects.postgresql import ARRAY
-    assert isinstance(columns["vector_data"].type, ARRAY)
+    # Verify vector_data is our dialect-aware FloatArrayType
+    assert isinstance(columns["vector_data"].type, FloatArrayType)
     
     fk_list = list(table.foreign_keys)
     assert len(fk_list) == 1
@@ -99,8 +108,8 @@ def test_metadata_model_schema():
     assert "key" in columns
     assert "value" in columns
     
-    from sqlalchemy.dialects.postgresql import JSONB
-    assert isinstance(columns["value"].type, JSONB)
+    # Verify value is our dialect-aware JSONBType
+    assert isinstance(columns["value"].type, JSONBType)
 
 def test_audit_log_model_schema():
     """Verify columns and constraints on the AuditLog model."""
