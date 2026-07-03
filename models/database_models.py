@@ -191,3 +191,16 @@ class AuditLog(Base):
 
     # Relationships
     user = relationship("User", back_populates="audit_logs")
+
+
+class TaskLog(Base):
+    __tablename__ = "task_logs"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    task_type = Column(String(100), nullable=False, index=True) # BATCH_INGEST, COMPACT_SEGMENTS, BUILD_HNSW
+    status = Column(String(50), nullable=False, default="pending", index=True) # pending, processing, completed, failed
+    payload = Column(JSONBType, nullable=True) # Arguments mapping
+    error_message = Column(Text, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    updated_at = Column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
