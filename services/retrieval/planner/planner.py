@@ -8,6 +8,7 @@ from services.retrieval.planner.statistics import StatisticsCatalog
 from services.retrieval.planner.cost.cost_estimator import CostEstimator
 from services.retrieval.planner.execution_plan import ExecutionPlan
 from services.retrieval.planner.selectivity_estimator import MetadataSelectivityEstimator
+from services.retrieval.planner.feedback import PlannerFeedbackLoop
 
 logger = logging.getLogger(__name__)
 
@@ -22,12 +23,14 @@ class QueryPlanner:
         registry: StrategyRegistry,
         statistics_catalog: StatisticsCatalog,
         cost_estimator: CostEstimator,
-        selectivity_estimator: Optional[MetadataSelectivityEstimator] = None
+        selectivity_estimator: Optional[MetadataSelectivityEstimator] = None,
+        feedback_loop: Optional[PlannerFeedbackLoop] = None
     ):
         self.registry = registry
         self.statistics_catalog = statistics_catalog
         self.cost_estimator = cost_estimator
         self.selectivity_estimator = selectivity_estimator
+        self.feedback_loop = feedback_loop or PlannerFeedbackLoop()
 
     def plan(
         self,
@@ -124,6 +127,12 @@ class QueryPlanner:
             chosen_strategy_name = "EXACT"
             chosen_strategy = self.registry.get_strategy("EXACT")
             chosen_cost = exact_est
+
+        # Calibrate latency prediction (Feature 8)
+        if self.feedback_loop:
+            predicted_latency = self.feedback_loop.calibrate_latency(chosen_cost.total_cost)
+            chosen_cost.assumptions["predicted_latency_ms"] = predicted_latency
+            trace.append(f"Calibrated latency prediction: {predicted_latency:.3f} ms.")
 
         # Build reasoning explanation (Feature 5 / 6)
         reasoning = (
