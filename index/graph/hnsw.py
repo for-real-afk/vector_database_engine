@@ -191,7 +191,13 @@ class HNSWIndex:
             self.enter_node = new_node
             self.max_level = level
 
-    def search(self, query_vector: list[float], k: int = 5, ef: int = None) -> list[Tuple[float, uuid.UUID]]:
+    def search(
+        self, 
+        query_vector: list[float], 
+        k: int = 5, 
+        ef: int = None,
+        allowed_ids: Set[uuid.UUID] = None
+    ) -> list[Tuple[float, uuid.UUID]]:
         """
         Search the HNSW index for the Top-K nearest neighbors.
         Returns a list of tuples: (distance, UUID)
@@ -217,7 +223,7 @@ class HNSWIndex:
                         changed = True
 
         # 2. Search Layer 0 using Candidate List
-        candidates = self._search_layer(q_vec, [curr_node], ef_val, 0)
+        candidates = self._search_layer(q_vec, [curr_node], ef_val, 0, allowed_ids)
         
         # 3. Filter candidates for tombstones and retrieve Top-K
         results = []
@@ -243,7 +249,8 @@ class HNSWIndex:
         q_vec: np.ndarray, 
         enter_nodes: list[HNSWNode], 
         ef: int, 
-        level_idx: int
+        level_idx: int,
+        allowed_ids: Set[uuid.UUID] = None
     ) -> CandidateList:
         """
         Search a single layer of HNSW index.
@@ -256,7 +263,8 @@ class HNSWIndex:
             visited.add(node.id)
             d = self._calculate_distance(q_vec, node.vector)
             v_queue.add(d, node)
-            w_queue.add(d, node)
+            if allowed_ids is None or node.id in allowed_ids:
+                w_queue.add(d, node)
 
         while len(v_queue) > 0:
             curr_dist, curr_node = v_queue.pop_closest()
@@ -272,11 +280,12 @@ class HNSWIndex:
                     
                     if d < w_queue.furthest_distance() or len(w_queue) < ef:
                         v_queue.add(d, neighbor)
-                        w_queue.add(d, neighbor)
-                        
-                        # Shrink best results queue to maintain size limit
-                        if len(w_queue) > ef:
-                            w_queue.pop_furthest()
+                        if allowed_ids is None or neighbor.id in allowed_ids:
+                            w_queue.add(d, neighbor)
+                            
+                            # Shrink best results queue to maintain size limit
+                            if len(w_queue) > ef:
+                                w_queue.pop_furthest()
 
         return w_queue
 
