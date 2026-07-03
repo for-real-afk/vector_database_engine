@@ -139,7 +139,6 @@ storage/snapshots/*.bin
 storage/snapshots/*.json
 storage/wal/*.log
 storage/wal/*.wal
-storage/cache/*
 
 # Alembic auto-generated versions if local only (we keep base structure)
 # Let's keep migrations in git but ignore local temp configs
